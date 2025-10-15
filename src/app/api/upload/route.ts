@@ -21,12 +21,19 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const timestamp = Date.now();
     const fileName = `${timestamp}-${file.name}`;
-    const remotePath = `/uploads/${fileName}`;
+    const remotePath = `/${fileName}`;
     
     const webdavUrl = `${process.env.WEBDAV_URL}${remotePath}`;
-    const auth = Buffer.from(`${process.env.WEBDAV_USERNAME}:${process.env.WEBDAV_PASSWORD}`).toString('base64');
+    
+    // Decode password in case it was URL-encoded in Vercel
+    const username = process.env.WEBDAV_USERNAME!;
+    const password = process.env.WEBDAV_PASSWORD!;
+    const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
     console.log('Uploading to:', webdavUrl);
+    console.log('Username:', username);
+    console.log('Password length:', password.length);
+    console.log('Auth header (first 20 chars):', auth.substring(0, 20));
 
     const response = await fetch(webdavUrl, {
       method: 'PUT',
