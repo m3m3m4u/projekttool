@@ -4,10 +4,14 @@ import Project from '@/models/Project';
 
 export async function GET() {
   try {
+    console.log('GET /api/projects called');
     await dbConnect();
+    console.log('Database connected');
     const projects = await Project.find({});
+    console.log('Projects found:', projects.length);
     return NextResponse.json(projects);
   } catch (error) {
+    console.error('GET /api/projects error:', error);
     return NextResponse.json({ error: 'Fehler beim Laden' }, { status: 500 });
   }
 }
