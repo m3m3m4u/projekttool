@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { use } from 'react';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
+import Toast from '@/components/Toast';
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [project, setProject] = useState<any>(null);
@@ -23,6 +24,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [attachedFiles, setAttachedFiles] = useState<{fileName: string, fileUrl: string}[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [removedFiles, setRemovedFiles] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const editRef = useRef<HTMLDivElement>(null);
@@ -125,13 +127,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (!uploadRes.ok) {
       const errorData = await uploadRes.json();
       console.error('Upload fehlgeschlagen:', errorData);
-      alert('Upload fehlgeschlagen: ' + (errorData.details || errorData.error || 'Unbekannter Fehler'));
+      setToast({ message: 'Upload fehlgeschlagen: ' + (errorData.details || errorData.error || 'Unbekannter Fehler'), type: 'error' });
       return;
     }
     const { fileUrl, fileName } = await uploadRes.json();
     console.log('Upload erfolgreich:', fileUrl);
     setAttachedFiles(prev => [...prev, { fileName, fileUrl }]);
-    alert('Datei angehängt: ' + fileName);
+    setToast({ message: 'Datei angehängt: ' + fileName, type: 'success' });
   };
 
   const startEditItem = (item: any) => {
@@ -213,7 +215,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (res.ok) {
       router.push('/');
     } else {
-      alert('Falsches Codewort');
+      setToast({ message: 'Falsches Codewort', type: 'error' });
     }
   };
 
@@ -281,10 +283,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       a.click();
       URL.revokeObjectURL(url);
       
-      alert('Export erfolgreich!');
+      setToast({ message: 'Export erfolgreich!', type: 'success' });
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export fehlgeschlagen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
+      setToast({ message: 'Export fehlgeschlagen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'), type: 'error' });
     }
   };
 
@@ -292,6 +294,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="min-h-screen p-8">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
       <div className="flex justify-between items-center mb-4">
         <Link href="/" className="text-blue-500">Zurück</Link>
         <div className="flex gap-2">
