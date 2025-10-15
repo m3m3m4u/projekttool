@@ -257,8 +257,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       project.items.forEach((item: any) => {
         const files = item.content?.files || [];
         files.forEach((file: any) => {
-          const promise = fetch(file.fileUrl)
-            .then(res => res.blob())
+          const promise = fetch(`/api/download?url=${encodeURIComponent(file.fileUrl)}`)
+            .then(res => {
+              if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+              return res.blob();
+            })
             .then(blob => {
               zip.file(`dateien/${file.fileName}`, blob);
             })
