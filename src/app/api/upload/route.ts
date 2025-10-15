@@ -21,19 +21,28 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const timestamp = Date.now();
     const fileName = `${timestamp}-${file.name}`;
-    const remotePath = `/${fileName}`;
+    const remotePath = `/projekttool-uploads/${fileName}`;
     
-    const webdavUrl = `${process.env.WEBDAV_URL}${remotePath}`;
-    
-    // Decode password in case it was URL-encoded in Vercel
     const username = process.env.WEBDAV_USERNAME!;
     const password = process.env.WEBDAV_PASSWORD!;
     const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
+    // First, try to create the uploads directory
+    const dirUrl = `${process.env.WEBDAV_URL}/projekttool-uploads`;
+    console.log('Ensuring directory exists:', dirUrl);
+    
+    const mkdirResponse = await fetch(dirUrl, {
+      method: 'MKCOL',
+      headers: {
+        'Authorization': `Basic ${auth}`
+      }
+    });
+    
+    console.log('MKCOL response status:', mkdirResponse.status, '(201=created, 405=already exists)');
+
+    // Now upload the file
+    const webdavUrl = `${process.env.WEBDAV_URL}${remotePath}`;
     console.log('Uploading to:', webdavUrl);
-    console.log('Username:', username);
-    console.log('Password length:', password.length);
-    console.log('Auth header (first 20 chars):', auth.substring(0, 20));
 
     const response = await fetch(webdavUrl, {
       method: 'PUT',
