@@ -35,6 +35,7 @@ export default function Home() {
   };
 
   const addProject = async () => {
+    console.log('addProject called');
     if (!newTitle.trim()) {
       setError('Titel ist erforderlich');
       return;
@@ -90,7 +91,7 @@ export default function Home() {
             placeholder="Beschreibung"
             className="w-full p-2 border rounded mb-2"
           />
-          <button onClick={addProject} className="px-4 py-2 bg-green-500 text-white rounded">Hinzufügen</button>
+          <button type="button" onClick={addProject} className="px-4 py-2 bg-green-500 text-white rounded">Hinzufügen</button>
         </div>
       )}
       <div className="grid gap-4">
