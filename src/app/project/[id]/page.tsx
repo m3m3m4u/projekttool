@@ -120,7 +120,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       body: formData
     });
     if (!uploadRes.ok) {
-      console.error('Upload fehlgeschlagen');
+      const errorData = await uploadRes.json();
+      console.error('Upload fehlgeschlagen:', errorData);
+      alert('Upload fehlgeschlagen: ' + (errorData.details || errorData.error || 'Unbekannter Fehler'));
       return;
     }
     const { fileUrl, fileName } = await uploadRes.json();
