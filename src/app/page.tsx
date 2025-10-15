@@ -8,29 +8,54 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
   const fetchProjects = async () => {
-    const res = await fetch('/api/projects');
-    const data = await res.json();
-    setProjects(data);
+    try {
+      const res = await fetch('/api/projects');
+      if (!res.ok) {
+        throw new Error(`Fehler beim Laden: ${res.status}`);
+      }
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setProjects(data);
+        setError(null);
+      } else {
+        throw new Error('Ungültige Datenstruktur erhalten');
+      }
+    } catch (err) {
+      console.error('Fetch projects error:', err);
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+      setProjects([]);
+    }
   };
 
   const addProject = async () => {
-    if (!newTitle.trim()) return;
-    const res = await fetch('/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: newTitle, description: newDesc })
-    });
-    if (res.ok) {
+    if (!newTitle.trim()) {
+      setError('Titel ist erforderlich');
+      return;
+    }
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle, description: newDesc })
+      });
+      if (!res.ok) {
+        throw new Error(`Fehler beim Erstellen: ${res.status}`);
+      }
       setNewTitle('');
       setNewDesc('');
       setShowForm(false);
+      setError(null);
       fetchProjects();
+    } catch (err) {
+      console.error('Add project error:', err);
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
     }
   };
 
@@ -45,6 +70,11 @@ export default function Home() {
           Neue Gruppe erstellen
         </button>
       </div>
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
       {showForm && (
         <div className="mb-8 p-4 border rounded">
           <h2 className="text-xl mb-4">Neue Gruppe hinzufügen</h2>
