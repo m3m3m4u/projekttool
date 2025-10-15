@@ -110,11 +110,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const addFileItem = async () => {
-    if (!selectedFile) return;
+  const addFileItem = async (file?: File) => {
+    const fileToUpload = file || selectedFile;
+    if (!fileToUpload) return;
     console.log('Upload startet...');
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    formData.append('file', fileToUpload);
     const uploadRes = await fetch('/api/upload', {
       method: 'POST',
       body: formData
@@ -265,8 +266,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 const file = e.target.files?.[0];
                 if (file) {
                   console.log('Datei ausgewählt:', file.name);
-                  setSelectedFile(file);
-                  await addFileItem();
+                  await addFileItem(file);
                   e.target.value = '';
                 }
               }}
