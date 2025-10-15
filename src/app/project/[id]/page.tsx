@@ -5,6 +5,8 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
+import jsPDF from 'jspdf';
+import JSZip from 'jszip';
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [project, setProject] = useState<any>(null);
@@ -215,15 +217,88 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     }
   };
 
+  const exportProject = async () => {
+    try {
+      const zip = new JSZip();
+      
+      // Create PDF
+      const pdf = new jsPDF();
+      pdf.setFontSize(16);
+      pdf.text(project.title, 10, 10);
+      pdf.setFontSize(12);
+      pdf.text(project.description, 10, 20);
+      
+      let yPosition = 30;
+      
+      // Add all text items to PDF
+      project.items.forEach((item: any, index: number) => {
+        if (yPosition > 270) {
+          pdf.addPage();
+          yPosition = 10;
+        }
+        
+        const date = new Date(item.date).toLocaleDateString('de-DE');
+        pdf.setFontSize(10);
+        pdf.text(`${date}:`, 10, yPosition);
+        yPosition += 7;
+        
+        const text = typeof item.content === 'string' ? item.content : (item.content?.text || '');
+        const lines = pdf.splitTextToSize(text, 180);
+        pdf.text(lines, 10, yPosition);
+        yPosition += lines.length * 5 + 10;
+      });
+      
+      // Add PDF to ZIP
+      const pdfBlob = pdf.output('blob');
+      zip.file(`${project.title}.pdf`, pdfBlob);
+      
+      // Download all attached files and add to ZIP
+      const filePromises: Promise<void>[] = [];
+      project.items.forEach((item: any) => {
+        const files = item.content?.files || [];
+        files.forEach((file: any) => {
+          const promise = fetch(file.fileUrl)
+            .then(res => res.blob())
+            .then(blob => {
+              zip.file(`dateien/${file.fileName}`, blob);
+            })
+            .catch(err => console.error('Fehler beim Download:', file.fileName, err));
+          filePromises.push(promise);
+        });
+      });
+      
+      await Promise.all(filePromises);
+      
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.title}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      alert('Export erfolgreich!');
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export fehlgeschlagen: ' + (error instanceof Error ? error.message : 'Unbekannter Fehler'));
+    }
+  };
+
   if (!project) return <div>Lade...</div>;
 
   return (
     <div className="min-h-screen p-8">
       <div className="flex justify-between items-center mb-4">
         <Link href="/" className="text-blue-500">Zurück</Link>
-        <button onClick={() => setEditMode(!editMode)} className="px-4 py-2 bg-blue-500 text-white rounded">
-          {editMode ? 'Bearbeitungsmodus ausschalten' : 'Bearbeitungsmodus einschalten'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportProject} className="px-4 py-2 bg-green-500 text-white rounded" title="Projekt als ZIP exportieren (PDF + Dateien)">
+            📦 Exportieren
+          </button>
+          <button onClick={() => setEditMode(!editMode)} className="px-4 py-2 bg-blue-500 text-white rounded">
+            {editMode ? 'Bearbeitungsmodus ausschalten' : 'Bearbeitungsmodus einschalten'}
+          </button>
+        </div>
       </div>
       <div className="mb-4">
         {editTitle ? (
