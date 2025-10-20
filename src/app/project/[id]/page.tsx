@@ -73,6 +73,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (res.ok) {
       setProject({ ...project, title });
       setEditTitle(false);
+      setToast({ message: 'Titel gespeichert', type: 'success' });
+    } else {
+      setToast({ message: 'Fehler beim Speichern', type: 'error' });
     }
   };
 
@@ -85,6 +88,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (res.ok) {
       setProject({ ...project, description });
       setEditDesc(false);
+      setToast({ message: 'Beschreibung gespeichert', type: 'success' });
+    } else {
+      setToast({ message: 'Fehler beim Speichern', type: 'error' });
     }
   };
 

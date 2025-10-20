@@ -28,7 +28,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       console.log('Project not found');
       return NextResponse.json({ error: 'Projekt nicht gefunden' }, { status: 404 });
     }
-    project.items = body.items;
+    
+    // Update fields if provided
+    if (body.title !== undefined) project.title = body.title;
+    if (body.description !== undefined) project.description = body.description;
+    if (body.items !== undefined) project.items = body.items;
+    
     await project.save({ validateBeforeSave: false });
     console.log('Project saved');
     return NextResponse.json(project);
