@@ -8,6 +8,11 @@ import { use } from 'react';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
 import Toast from '@/components/Toast';
+import dynamic from 'next/dynamic';
+
+// Dynamically import PDF components (CDN-based, no SSR issues)
+const SimplePDFViewer = dynamic(() => import('@/components/SimplePDFViewer'), { ssr: false });
+const SimplePDFMultiThumbnail = dynamic(() => import('@/components/SimplePDFMultiThumbnail'), { ssr: false });
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [project, setProject] = useState<any>(null);
@@ -27,11 +32,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [removedFiles, setRemovedFiles] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
+  const [selectedPDF, setSelectedPDF] = useState<{url: string, name: string} | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const editRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { id } = use(params);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchProject();
@@ -140,8 +151,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const addFileItem = async (file?: File) => {
     const fileToUpload = file || selectedFile;
-    if (!fileToUpload) return;
-    console.log('Upload startet...');
+    if (!fileToUpload) {
+      console.log('Keine Datei zum Upload gefunden');
+      return;
+    }
+    console.log('Upload startet für:', fileToUpload.name);
     const formData = new FormData();
     formData.append('file', fileToUpload);
     const uploadRes = await fetch('/api/upload', {
@@ -422,13 +436,30 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         {attachedFiles.length > 0 && (
           <div className="mt-2 p-3 border-2 border-blue-400 rounded bg-blue-50">
             <p className="text-sm font-semibold text-blue-800 mb-2">Angehängt an diesen Text:</p>
-            <div className="space-y-1">
-              {attachedFiles.map((file, index) => (
-                <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border">
-                  <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
-                  <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">X</button>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {attachedFiles.map((file, index) => {
+                const isPDF = file.fileName.toLowerCase().endsWith('.pdf');
+                const proxyUrl = `/api/download?url=${encodeURIComponent(file.fileUrl)}`;
+                
+                if (isPDF && isMounted) {
+                  return (
+                    <SimplePDFMultiThumbnail
+                      key={index}
+                      fileUrl={proxyUrl}
+                      fileName={file.fileName}
+                      onClick={() => setSelectedPDF({ url: proxyUrl, name: file.fileName })}
+                      showDeleteButton={true}
+                      onDelete={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))}
+                    />
+                  );
+                }
+                return (
+                  <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border">
+                    <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium flex-1 text-left">{file.fileName}</button>
+                    <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">X</button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -466,10 +497,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                console.log('Datei ausgewählt:', file.name);
-                                setSelectedFile(file);
-                                await addFileItem();
+                                console.log('Datei im Bearbeitungsmodus ausgewählt:', file.name);
+                                try {
+                                  await addFileItem(file);
+                                  console.log('Datei erfolgreich hinzugefügt im Bearbeitungsmodus');
+                                } catch (error) {
+                                  console.error('Fehler beim Hinzufügen der Datei im Bearbeitungsmodus:', error);
+                                }
                                 e.target.value = '';
+                              } else {
+                                console.log('Keine Datei ausgewählt im Bearbeitungsmodus');
                               }
                             }}
                             className="hidden"
@@ -477,20 +514,60 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         </label>
                       </div>
                       {(item.content?.files?.length > 0 || attachedFiles.length > 0) && (
-                        <div className="mt-3 space-y-1">
-                          <p className="text-sm font-semibold text-gray-700">Angehängte Dateien:</p>
-                          {item.content?.files?.map((file: any, index: number) => (
-                            <div key={`existing-${index}`} className="flex items-center gap-2 bg-white p-2 rounded border">
-                              <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
-                              <button onClick={() => setRemovedFiles(prev => new Set([...prev, file.fileUrl]))} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">X</button>
-                            </div>
-                          ))}
-                          {attachedFiles.map((file, index) => (
-                            <div key={`new-${index}`} className="flex items-center gap-2 bg-white p-2 rounded border">
-                              <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
-                              <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">X</button>
-                            </div>
-                          ))}
+                        <div className="mt-3">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Angehängte Dateien:</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {item.content?.files
+                              ?.filter((file: any) => !removedFiles.has(file.fileUrl))
+                              .map((file: any, index: number) => {
+                                const isPDF = file.fileName.toLowerCase().endsWith('.pdf');
+                                const proxyUrl = `/api/download?url=${encodeURIComponent(file.fileUrl)}`;
+                                
+                                if (isPDF && isMounted) {
+                                  return (
+                                    <SimplePDFMultiThumbnail
+                                      key={`existing-${index}`}
+                                      fileUrl={proxyUrl}
+                                      fileName={file.fileName}
+                                      onClick={() => setSelectedPDF({ url: proxyUrl, name: file.fileName })}
+                                      maxPages={5}
+                                      showDeleteButton={true}
+                                      onDelete={() => setRemovedFiles(prev => new Set([...prev, file.fileUrl]))}
+                                    />
+                                  );
+                                }
+                                return (
+                                  <div key={`existing-${index}`} className="flex items-center gap-2 bg-white p-2 rounded border">
+                                    <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
+                                    <button onClick={() => setRemovedFiles(prev => new Set([...prev, file.fileUrl]))} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">X</button>
+                                  </div>
+                                );
+                              })}
+                            {attachedFiles.map((file, index) => {
+                              const isPDF = file.fileName.toLowerCase().endsWith('.pdf');
+                              const proxyUrl = `/api/download?url=${encodeURIComponent(file.fileUrl)}`;
+                              
+                              if (isPDF && isMounted) {
+                                return (
+                                  <SimplePDFMultiThumbnail
+                                    key={`new-${index}`}
+                                    fileUrl={proxyUrl}
+                                    fileName={file.fileName}
+                                    onClick={() => setSelectedPDF({ url: proxyUrl, name: file.fileName })}
+                                    maxPages={5}
+                                    showDeleteButton={true}
+                                    onDelete={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))}
+                                  />
+                                );
+                              }
+                              return (
+                                <div key={`new-${index}`} className="flex items-center gap-2 bg-white p-2 rounded border">
+                                  <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
+                                  <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">X</button>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                       <button onClick={saveEditedItem} className="px-4 py-2 bg-green-500 text-white rounded mr-2">Speichern</button>
@@ -500,13 +577,31 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                     <>
                       <div dangerouslySetInnerHTML={{ __html: typeof item.content === 'string' ? item.content : (item.content?.text || '') }} />
                       {typeof item.content === 'object' && item.content?.files && item.content.files.length > 0 && (
-                        <div className="mt-3 space-y-1">
-                          <p className="text-sm font-semibold text-gray-700">Angehängte Dateien:</p>
-                          {item.content.files.map((file: any, index: number) => (
-                            <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border">
-                              <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
-                            </div>
-                          ))}
+                        <div className="mt-3">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Angehängte Dateien:</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {item.content.files.map((file: any, index: number) => {
+                              const isPDF = file.fileName.toLowerCase().endsWith('.pdf');
+                              const proxyUrl = `/api/download?url=${encodeURIComponent(file.fileUrl)}`;
+                              
+                              if (isPDF && isMounted) {
+                                return (
+                                  <SimplePDFMultiThumbnail
+                                    key={index}
+                                    fileUrl={proxyUrl}
+                                    fileName={file.fileName}
+                                    onClick={() => setSelectedPDF({ url: proxyUrl, name: file.fileName })}
+                                    maxPages={5}
+                                  />
+                                );
+                              }
+                              return (
+                                <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border">
+                                  <button onClick={() => window.open(file.fileUrl, '_blank')} className="text-blue-600 underline font-medium">{file.fileName}</button>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </>
@@ -532,6 +627,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         />
         <button onClick={deleteProject} className="px-4 py-2 bg-red-500 text-white rounded">Löschen</button>
       </div>}
+      {selectedPDF && isMounted && (
+        <SimplePDFViewer
+          fileUrl={selectedPDF.url}
+          fileName={selectedPDF.name}
+          onClose={() => setSelectedPDF(null)}
+        />
+      )}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

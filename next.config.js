@@ -6,6 +6,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  webpack: (config, { isServer }) => {
+    // Handle pdfjs-dist properly
+    if (!isServer) {
+      config.resolve.alias.canvas = false;
+    }
+    return config;
+  },
   async headers() {
     return [
       {
