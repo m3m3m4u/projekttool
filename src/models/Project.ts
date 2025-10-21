@@ -11,6 +11,7 @@ const ItemSchema = new mongoose.Schema({
 const ProjectSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
+  members: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
   order: { type: Number, required: true },
   items: [ItemSchema],

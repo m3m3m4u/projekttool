@@ -32,6 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Update fields if provided
     if (body.title !== undefined) project.title = body.title;
     if (body.description !== undefined) project.description = body.description;
+    if (body.members !== undefined) project.members = body.members;
     if (body.items !== undefined) project.items = body.items;
     
     await project.save({ validateBeforeSave: false });

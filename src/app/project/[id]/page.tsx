@@ -13,8 +13,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [project, setProject] = useState<any>(null);
   const [editTitle, setEditTitle] = useState(false);
   const [editDesc, setEditDesc] = useState(false);
+  const [editMembers, setEditMembers] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [members, setMembers] = useState('');
   const [newText, setNewText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [editingItem, setEditingItem] = useState<string | null>(null);
@@ -62,6 +64,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setProject(data);
     setTitle(data.title);
     setDescription(data.description);
+    setMembers(data.members || '');
   };
 
   const saveTitle = async () => {
@@ -89,6 +92,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       setProject({ ...project, description });
       setEditDesc(false);
       setToast({ message: 'Beschreibung gespeichert', type: 'success' });
+    } else {
+      setToast({ message: 'Fehler beim Speichern', type: 'error' });
+    }
+  };
+
+  const saveMembers = async () => {
+    const res = await fetch(`/api/project/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ members })
+    });
+    if (res.ok) {
+      setProject({ ...project, members });
+      setEditMembers(false);
+      setToast({ message: 'Teammitglieder gespeichert', type: 'success' });
     } else {
       setToast({ message: 'Fehler beim Speichern', type: 'error' });
     }
@@ -238,6 +256,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       
       let yPosition = 30;
       
+      // Add team members if available
+      if (project.members && project.members.trim()) {
+        pdf.setFontSize(14);
+        pdf.text('Teammitglieder:', 10, yPosition);
+        yPosition += 7;
+        pdf.setFontSize(10);
+        const memberLines = pdf.splitTextToSize(project.members, 180);
+        pdf.text(memberLines, 10, yPosition);
+        yPosition += memberLines.length * 5 + 10;
+      }
+      
       // Add all text items to PDF
       project.items.forEach((item: any, index: number) => {
         if (yPosition > 270) {
@@ -339,6 +368,24 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <p>{project.description}</p>
         )}
         {editMode && <button onClick={() => setEditDesc(!editDesc)} className="mt-2 px-1 py-1 bg-gray-200 rounded text-sm">{editMode ? 'Bearbeiten' : '✏️'}</button>}
+      </div>
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-2">Teammitglieder</h2>
+        {editMembers ? (
+          <div>
+            <textarea 
+              value={members} 
+              onChange={(e) => setMembers(e.target.value)} 
+              className="w-full p-2 border" 
+              rows={4}
+              placeholder="Namen der Teammitglieder eingeben..."
+            />
+            <button onClick={saveMembers} className="mt-2 px-4 py-2 bg-green-500 text-white rounded">Speichern</button>
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap">{project.members || 'Noch keine Teammitglieder hinzugefügt'}</p>
+        )}
+        {editMode && <button onClick={() => setEditMembers(!editMembers)} className="mt-2 px-1 py-1 bg-gray-200 rounded text-sm">Bearbeiten</button>}
       </div>
       {editMode && <div className="mb-8 p-4 border-2 border-gray-300 rounded bg-gray-50">
         <h3 className="text-lg font-semibold mb-4">Neuen Inhalt hinzufügen</h3>
