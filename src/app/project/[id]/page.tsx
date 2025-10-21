@@ -361,11 +361,16 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div className="mb-8">
         {editDesc ? (
           <div>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full p-2 border" />
+            <textarea 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              className="w-full p-2 border" 
+              rows={4}
+            />
             <button onClick={saveDesc} className="mt-2 px-4 py-2 bg-green-500 text-white rounded">Speichern</button>
           </div>
         ) : (
-          <p>{project.description}</p>
+          <p className="whitespace-pre-wrap">{project.description}</p>
         )}
         {editMode && <button onClick={() => setEditDesc(!editDesc)} className="mt-2 px-1 py-1 bg-gray-200 rounded text-sm">{editMode ? 'Bearbeiten' : '✏️'}</button>}
       </div>
