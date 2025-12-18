@@ -15,7 +15,7 @@
     "jspdf": "^3.0.3",
     "jszip": "^3.10.1",
     "mongoose": "^8.19.1",
-    "next": "15.5.5",
+    "next": "^15.1.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-markdown": "^10.1.0",
@@ -29,7 +29,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.5",
+    "eslint-config-next": "^15.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
