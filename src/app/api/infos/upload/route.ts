@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_CODE = '872020';
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in Bytes
+
+export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,6 +20,13 @@ export async function POST(request: NextRequest) {
     
     if (!file) {
       return NextResponse.json({ error: 'Keine Datei' }, { status: 400 });
+    }
+    
+    // Dateigröße prüfen
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ 
+        error: `Datei zu groß (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum: 5MB` 
+      }, { status: 413 });
     }
     
     const buffer = Buffer.from(await file.arrayBuffer());

@@ -6,6 +6,15 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    serverComponentsExternalPackages: [],
+  },
+  // Erhöhe Upload-Limits auf 5MB
+  api: {
+    bodyParser: {
+      sizeLimit: '5mb',
+    },
+  },
   webpack: (config, { isServer }) => {
     // Handle pdfjs-dist properly
     if (!isServer) {

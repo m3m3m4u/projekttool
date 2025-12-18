@@ -22,6 +22,8 @@ interface InfoItem {
 
 type Category = 'personalvertretung' | 'kurse' | 'mittwochsnotizen';
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in Bytes
+
 const CATEGORIES: { key: Category; label: string; icon: string }[] = [
   { key: 'personalvertretung', label: 'Informationen der Personalvertretung', icon: '👥' },
   { key: 'kurse', label: 'Kurse und Fortbildungen', icon: '📚' },
@@ -190,6 +192,11 @@ export default function InfosPage() {
       const newFiles: InfoFile[] = [...item.files];
       
       for (const file of additionalFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          alert(`Datei "${file.name}" ist zu groß (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum: 5MB`);
+          continue;
+        }
+        
         const formData = new FormData();
         formData.append('file', file);
         formData.append('code', '872020');
@@ -438,12 +445,26 @@ export default function InfosPage() {
             />
             
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Dateien auswählen</label>
+              <label className="block text-sm font-medium mb-2">Dateien auswählen (max. 5MB pro Datei)</label>
               <input
                 ref={fileInputRef}
                 type="file"
                 multiple
-                onChange={e => setSelectedFiles(Array.from(e.target.files || []))}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  const validFiles = files.filter(file => {
+                    if (file.size > MAX_FILE_SIZE) {
+                      alert(`Datei "${file.name}" ist zu groß (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum: 5MB`);
+                      return false;
+                    }
+                    return true;
+                  });
+                  setSelectedFiles(validFiles);
+                  if (validFiles.length !== files.length) {
+                    // Reset file input if some files were filtered out
+                    e.target.value = '';
+                  }
+                }}
                 className="w-full"
               />
               {selectedFiles.length > 0 && (
